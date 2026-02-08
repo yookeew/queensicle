@@ -14,6 +14,10 @@ import java.util.*;
 import java.util.List;
 
 public class Main {
+    static class RGB {
+        int r, g, b, clusterId = -1;
+        RGB(int r, int g, int b) { this.r = r; this.g = g; this.b = b; }
+    }
 
     public static void main(String[] args) throws Exception {
         WebDriverManager.chromedriver().setup();
@@ -82,7 +86,7 @@ public class Main {
                     .doubleClick()
                     .perform();
 
-            Thread.sleep(100);
+            Thread.sleep(75);
         }
 
         System.out.println("Done!");
@@ -94,48 +98,52 @@ public class Main {
         int cellWidth = img.getWidth() / gridSize;
         int cellHeight = img.getHeight() / gridSize;
 
-        List<List<Color>> colors = new ArrayList<>();
+        List<List<RGB>> colors = new ArrayList<>();
 
         for (int i = 0; i < gridSize; i++) {
-            List<Color> row = new ArrayList<>();
+            List<RGB> row = new ArrayList<>();
             for (int j = 0; j < gridSize; j++) {
-
-                double[] sx = {0.5, 0.3, 0.7, 0.3, 0.7};
-                double[] sy = {0.5, 0.3, 0.3, 0.7, 0.7};
 
                 int rSum = 0, gSum = 0, bSum = 0, count = 0;
 
-                for (int s = 0; s < sx.length; s++) {
-                    int x = (int) (j * cellWidth + cellWidth * sx[s]);
-                    int y = (int) (i * cellHeight + cellHeight * sy[s]);
+                for (double sy = 0.3; sy <= 0.7; sy += 0.2) {
+                    for (double sx = 0.3; sx <= 0.7; sx += 0.2) {
 
-                    int rgb = img.getRGB(x, y);
-                    int r = (rgb >> 16) & 0xFF;
-                    int g = (rgb >> 8) & 0xFF;
-                    int b = rgb & 0xFF;
+                        int x = (int) (j * cellWidth + cellWidth * sx);
+                        int y = (int) (i * cellHeight + cellHeight * sy);
 
-                    if (!(r < 10 && g < 10 && b < 10)) {
-                        rSum += r;
-                        gSum += g;
-                        bSum += b;
-                        count++;
+                        int rgb = img.getRGB(x, y);
+                        int r = (rgb >> 16) & 0xFF;
+                        int g = (rgb >> 8) & 0xFF;
+                        int b = rgb & 0xFF;
+
+                        if (!(r < 30 && g < 30 && b < 30)) {
+                            rSum += r;
+                            gSum += g;
+                            bSum += b;
+                            count++;
+                        }
                     }
                 }
 
-                if (count > 0) {
-                    row.add(new Color(rSum / count, gSum / count, bSum / count));
+                if (count == 0) {
+                    row.add(new RGB(0, 0, 0));
                 } else {
-                    row.add(Color.BLACK);
+                    row.add(new RGB(
+                            Math.round((float) rSum / count),
+                            Math.round((float) gSum / count),
+                            Math.round((float) bSum / count)
+                    ));
                 }
             }
             colors.add(row);
         }
 
-        List<Color> clusters = new ArrayList<>();
+        List<RGB> clusters = new ArrayList<>();
 
         for (int i = 0; i < gridSize; i++) {
             for (int j = 0; j < gridSize; j++) {
-                Color c = colors.get(i).get(j);
+                RGB c = colors.get(i).get(j);
 
                 int id = -1;
                 for (int k = 0; k < clusters.size(); k++) {
@@ -150,7 +158,7 @@ public class Main {
                     id = clusters.size() - 1;
                 }
 
-                colors.get(i).set(j, new Color(id, id, id));
+                c.clusterId = id;
             }
         }
 
@@ -158,20 +166,34 @@ public class Main {
         for (int i = 0; i < gridSize; i++) {
             List<Integer> row = new ArrayList<>();
             for (int j = 0; j < gridSize; j++) {
-                row.add(colors.get(i).get(j).getRed());
+                row.add(colors.get(i).get(j).clusterId);
             }
             board.add(row);
         }
 
-        System.out.println("Detected " + clusters.size() + " unique colors");
+        System.out.println("Detected " + clusters.size() + " unique regions");
+        printRegionGrid(board);
+
         return board;
     }
 
-    static double colorDistance(Color a, Color b) {
+
+    static double colorDistance(RGB a, RGB b) {
         return Math.sqrt(
-                Math.pow(a.getRed() - b.getRed(), 2) +
-                        Math.pow(a.getGreen() - b.getGreen(), 2) +
-                        Math.pow(a.getBlue() - b.getBlue(), 2)
+                Math.pow(a.r - b.r, 2) +
+                        Math.pow(a.g - b.g, 2) +
+                        Math.pow(a.b - b.b, 2)
         );
     }
+
+    static void printRegionGrid(List<List<Integer>> board) {
+        System.out.println("Detected regions grid:");
+        for (List<Integer> row : board) {
+            for (int cell : row) {
+                System.out.print(cell + " ");
+            }
+            System.out.println();
+        }
+    }
+
 }
