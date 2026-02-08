@@ -2,11 +2,14 @@ import io.github.bonigarcia.wdm.WebDriverManager;
 import org.openqa.selenium.*;
 import org.openqa.selenium.chrome.ChromeDriver;
 import org.openqa.selenium.interactions.Actions;
+import org.openqa.selenium.support.ui.ExpectedConditions;
+import org.openqa.selenium.support.ui.WebDriverWait;
 
 import javax.imageio.ImageIO;
 import java.awt.*;
 import java.awt.image.BufferedImage;
 import java.io.File;
+import java.time.Duration;
 import java.util.*;
 import java.util.List;
 
@@ -19,21 +22,29 @@ public class Main {
         System.out.print("Enter URL: ");
         String url = scanner.nextLine();
 
-        System.out.print("Enter board size (e.g., 7): ");
-        int gridSize = scanner.nextInt();
-
         WebDriver driver = new ChromeDriver();
         driver.get(url);
-        Thread.sleep(2000);
 
-        WebElement board = driver.findElement(By.className("board"));
+        //Wait ONLY for the board to exist (not full DOM)
+        WebDriverWait wait = new WebDriverWait(driver, Duration.ofSeconds(5));
+        WebElement board = wait.until(
+                ExpectedConditions.presenceOfElementLocated(By.className("board"))
+        );
+
+        JavascriptExecutor js = (JavascriptExecutor) driver;
+        String cols = (String) js.executeScript(
+                "return getComputedStyle(arguments[0]).gridTemplateColumns",
+                board
+        );
+        int gridSize = cols.trim().split("\\s+").length;
+
+        System.out.println("Detected grid size: " + gridSize);
 
         int boardX = board.getLocation().getX();
         int boardY = board.getLocation().getY();
         int boardWidth = board.getSize().getWidth();
         int boardHeight = board.getSize().getHeight();
 
-        JavascriptExecutor js = (JavascriptExecutor) driver;
         double dpr = ((Number) js.executeScript("return window.devicePixelRatio")).doubleValue();
 
         File screenshot = ((TakesScreenshot) driver).getScreenshotAs(OutputType.FILE);
@@ -46,7 +57,7 @@ public class Main {
 
         BufferedImage boardImg = fullImg.getSubimage(sx, sy, sw, sh);
 
-        List<List<Integer>> colorBoard = parseBoard(boardImg, gridSize, 30);
+        List<List<Integer>> colorBoard = parseBoard(boardImg, gridSize, 20);
 
         Solver solver = new Solver(new Puzzle(gridSize, colorBoard));
         List<List<Integer>> solution = solver.solve();
@@ -71,8 +82,7 @@ public class Main {
                     .doubleClick()
                     .perform();
 
-            Thread.sleep(200);
-
+            Thread.sleep(100);
         }
 
         System.out.println("Done!");
