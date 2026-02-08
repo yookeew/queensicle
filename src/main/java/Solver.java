@@ -65,9 +65,10 @@ public class Solver {
 
         //1 per region
         int maxRegion = 0;
+
         for(int i = 0; i < n; i++){
             for(int j = 0; j < n; j++){
-                maxRegion = Math.max(maxRegion, puzzle.getBoard().get(i).get(j).getRegion());
+                maxRegion = Math.max(maxRegion, puzzle.getBoard().get(i).get(j)); // CHANGED
             }
         }
 
@@ -75,12 +76,14 @@ public class Solver {
             List<IntVar> regionVars = new ArrayList<>();
             for(int i = 0; i < n; i++){
                 for(int j = 0; j < n; j++){
-                    if(puzzle.getBoard().get(i).get(j).getRegion() == regionId){
+                    if(puzzle.getBoard().get(i).get(j) == regionId){ // CHANGED
                         regionVars.add(vars[i][j]);
                     }
                 }
             }
-            model.sum(regionVars.toArray(new IntVar[0]), "=", 1).post();
+            if(!regionVars.isEmpty()){
+                model.sum(regionVars.toArray(new IntVar[0]), "=", 1).post();
+            }
         }
 
         //solve it
